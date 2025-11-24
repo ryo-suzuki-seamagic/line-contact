@@ -34,8 +34,9 @@
     </style>
   </head>
   <body>
-    <h2>TECHS お問い合わせ</h2>
-    <p>ご質問・ご依頼など、お気軽にお送りください。</p>
+    <h2>TECHS</h2>
+    <h2>お問い合わせ</h2>
+    <p id="content-lead">ご質問・ご依頼など、お気軽にお送りください。</p>
 
     <!-- フォームエリア -->
     <div id="formArea">
@@ -112,6 +113,7 @@
     const formArea = document.getElementById("formArea");
     const thanks   = document.getElementById("thanks");
     const okBtn    = document.getElementById("okBtn");
+    const leadText = document.getElementById("contact-lead");
 
     // 送信ボタン
     btn.addEventListener("click", async () => {
@@ -120,6 +122,7 @@
       const email      = v("email");
       const category   = v("category");
       const body       = v("body");
+      
 
       // ▼バリデーション
       const errors = [];
@@ -162,6 +165,11 @@
 
         formArea.style.display = "none";
         thanks.style.display = "block";
+        
+        if (leadText) {
+        leadText.style.display = "none";
+      }
+
       } catch (err) {
         alert("送信エラー：" + err);
         btn.disabled = false;
