@@ -36,6 +36,7 @@
   <body>
     <h2>TECHS</h2>
     <h2>お問い合わせ</h2>
+    <!-- ★ この一文に id="contact-lead" を付ける -->
     <p id="contact-lead">ご質問・ご依頼など、お気軽にお送りください。</p>
 
     <!-- フォームエリア -->
@@ -71,142 +72,137 @@
       <button id="okBtn" type="button">OK</button>
     </div>
 
-   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script>
-  const LIFF_ID = "2008387877-MpBpoE96";  // ここを正しいIDに
-  const API_URL = "https://script.google.com/macros/s/AKfycbzkZtT4dPz6Fqsu5zWJNok5Iw4XqW856RAmeoP1HsiY-af8y6vEIqpjVbdw5jIzNJphQA/exec"; // さっき作った doPost のURL
-  const SECRET  = "TECHS2025";
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+      const LIFF_ID = "2008387877-MpBpoE96";
+      const API_URL = "https://script.google.com/macros/s/AKfycbzkZtT4dPz6Fqsu5zWJNok5Iw4XqW856RAmeoP1HsiY-af8y6vEIqpjVbdw5jIzNJphQA/exec";
+      const SECRET  = "TECHS2025";
 
-  let profile = null;
+      let profile = null;
 
-  async function initLiff() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
+      async function initLiff() {
+        try {
+          await liff.init({ liffId: LIFF_ID });
 
-      // LIFFの文脈が取れたらログイン状態確認
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+
+          profile = await liff.getProfile();
+        } catch (e) {
+          const msg = String(e || "");
+          if (msg.includes("access token expired")) {
+            liff.login();
+            return;
+          }
+
+          alert(
+            "LIFFの初期化に失敗しました。\n" +
+            "LIFF ID とエンドポイントURLを確認してください。\n\n" +
+            msg
+          );
+        }
       }
 
-      profile = await liff.getProfile();
-    } catch (e) {
-      // ★ トークン切れっぽかったらログインし直す
-      const msg = String(e || "");
-      if (msg.includes("access token expired")) {
-        // ここでログインをかけるとブラウザが一旦LINEの認証画面に飛んで戻ってくる
-        liff.login();
-        return;
-      }
+      document.addEventListener("DOMContentLoaded", () => {
+        const btn       = document.getElementById("sendBtn");
+        const formArea  = document.getElementById("formArea");
+        const thanks    = document.getElementById("thanks");
+        const okBtn     = document.getElementById("okBtn");
+        const leadText  = document.getElementById("contact-lead"); // ★ ここと id を一致させる
 
-      // それ以外のエラーは表示
-      alert(
-        "LIFFの初期化に失敗しました。\n" +
-        "LIFF ID とエンドポイントURLを確認してください。\n\n" +
-        msg
-      );
-    }
-  }
+        // 送信ボタン
+        btn.addEventListener("click", async () => {
+          const name     = v("name");
+          const tel      = v("tel");
+          const email    = v("email");
+          const category = v("category");
+          const body     = v("body");
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const btn      = document.getElementById("sendBtn");
-    const formArea = document.getElementById("formArea");
-    const thanks   = document.getElementById("thanks");
-    const okBtn    = document.getElementById("okBtn");
-    const leadText = document.getElementById("contact-lead");
+          // ▼バリデーション
+          const errors = [];
+          if (!name) errors.push("お名前を入力してください。");
+          if (!tel && !email) errors.push("電話番号またはメールアドレスを入力してください。");
+          if (email && !(email.includes("@") && email.includes("."))) {
+            errors.push("メールアドレスの形式が正しくありません。");
+          }
+          if (!body) errors.push("お問い合わせ内容を入力してください。");
 
-    // 送信ボタン
-    btn.addEventListener("click", async () => {
-      const name       = v("name");
-      const tel        = v("tel");
-      const email      = v("email");
-      const category   = v("category");
-      const body       = v("body");
-      
+          if (errors.length > 0) {
+            alert(errors.join("\n"));
+            return;
+          }
 
-      // ▼バリデーション
-      const errors = [];
-      if (!name) errors.push("お名前を入力してください。");
-      if (!tel && !email) errors.push("電話番号またはメールアドレスを入力してください。");
-      if (email && !(email.includes("@") && email.includes("."))) {
-        errors.push("メールアドレスの形式が正しくありません。");
-      }
-      if (!body) errors.push("お問い合わせ内容を入力してください。");
+          const data = {
+            token: SECRET,
+            form: {
+              name: name,
+              phone: tel,
+              email: email,
+              category: category,
+              body: body
+            },
+            user: profile ? {
+              userId: profile.userId,
+              displayName: profile.displayName
+            } : null
+          };
 
-      if (errors.length > 0) {
-        alert(errors.join("\n"));
-        return;
-      }
+          btn.disabled = true;
+          btn.textContent = "送信中...";
 
-      const data = {
-        token: SECRET,
-        form: {
-          name: name,
-          phone: tel,
-          email: email,
-          category: category,
-          body: body
-        },
-        user: profile ? {
-          userId: profile.userId,
-          displayName: profile.displayName
-        } : null
-      };
+          try {
+            await fetch(API_URL, {
+              method: "POST",
+              mode: "no-cors",
+              body: JSON.stringify(data)
+            });
 
-      btn.disabled = true;
-      btn.textContent = "送信中...";
+            // フォームを隠してサンクス画面表示
+            formArea.style.display = "none";
+            thanks.style.display   = "block";
 
-      try {
-        await fetch(API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          body: JSON.stringify(data)
+            // ★ リード文を非表示
+            if (leadText) {
+              leadText.style.display = "none";
+            }
+
+          } catch (err) {
+            alert("送信エラー：" + err);
+            btn.disabled = false;
+            btn.textContent = "送信";
+          }
         });
 
-        formArea.style.display = "none";
-        thanks.style.display = "block";
-
-        if (leadText) {
-        leadText.style.display = "none";
-      }
-
-      } catch (err) {
-        alert("送信エラー：" + err);
-        btn.disabled = false;
-        btn.textContent = "送信";
-      }
-    });
-
-    // OKボタン → お礼メッセージ → 画面クローズ
-    okBtn.addEventListener("click", async () => {
-      try {
-        if (liff.isInClient()) {
-          await liff.sendMessages([
-            {
-              type: "text",
-              text: "お問い合わせありがとうございます。\n担当者よりご連絡いたします。（TECHS）"
+        // OKボタン → お礼メッセージ → 画面クローズ
+        okBtn.addEventListener("click", async () => {
+          try {
+            if (liff.isInClient()) {
+              await liff.sendMessages([
+                {
+                  type: "text",
+                  text: "お問い合わせありがとうございます。\n担当者よりご連絡いたします。（TECHS）"
+                }
+              ]);
+              liff.closeWindow();
+            } else {
+              window.close();
             }
-          ]);
-          liff.closeWindow();
-        } else {
-          window.close();
-        }
-      } catch (e) {
-        console.error(e);
-        if (liff.isInClient()) liff.closeWindow();
+          } catch (e) {
+            console.error(e);
+            if (liff.isInClient()) liff.closeWindow();
+          }
+        });
+
+        // 最後に LIFF 初期化
+        initLiff();
+      });
+
+      function v(id) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : "";
       }
-    });
-
-    // 最後に LIFF 初期化
-    initLiff();
-  });
-
-  function v(id) {
-    const el = document.getElementById(id);
-    return el ? el.value.trim() : "";
-  }
-</script>
-
-
+    </script>
   </body>
 </html>
